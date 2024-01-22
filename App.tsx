@@ -5,7 +5,7 @@
  * @format
  */
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import type { PropsWithChildren } from 'react';
 import {
   Button,
@@ -16,6 +16,8 @@ import {
   Text,
   useColorScheme,
   View,
+  Dimensions,
+  Image as RnImage,
 } from 'react-native';
 
 import {
@@ -25,8 +27,8 @@ import {
   ReloadInstructions,
 } from 'react-native/Libraries/NewAppScreen';
 
-import { captureScreen } from 'react-native-view-shot';
-import Canvas from 'react-native-canvas';
+import ViewShot, { captureScreen } from 'react-native-view-shot';
+import Canvas, { Image } from 'react-native-canvas';
 
 type SectionProps = PropsWithChildren<{
   title: string;
@@ -58,30 +60,49 @@ function Section({ children, title }: SectionProps): React.JSX.Element {
   );
 }
 
-function capture() {
-  captureScreen({
-    format: 'jpg',
-    quality: 0.8,
-  }).then(
-    uri => console.log('Image saved to', uri),
-    error => console.error('Oops, snapshot failed', error),
-  );
-}
+const wWid = Dimensions.get('screen').width / 2;
+const wHeight = Dimensions.get('screen').height / 2;
 
 function App(): React.JSX.Element {
   const isDarkMode = useColorScheme() === 'dark';
 
   const canvasRef = useRef(null);
+  const viewShotRef = useRef(null);
   const [img, setImage] = useState<string | null>(null);
+  const [canvasImage, setCanvasImage] = useState<string | null>(null);
 
-  const backgroundStyle = {
-    backgroundColor: isDarkMode ? Colors.darker : Colors.lighter,
-  };
+  useEffect(() => {
+    const updateCanvas = () => {
+      if (canvasRef?.current === null) {
+        return;
+      }
+      console.log('123');
+      const ctx = canvasRef.current?.getContext('2d');
+
+      // // Load your image
+      const image = new Image(canvasRef.current, wHeight, wWid);
+      image.src = img as string;
+      // image.src =
+      //   'https://upload.wikimedia.org/wikipedia/commons/6/63/Biho_Takashi._Bat_Before_the_Moon%2C_ca._1910.jpg' as string;
+
+      image.addEventListener('load', () => {
+        canvasRef.current.width = wWid;
+        canvasRef.current.height = wHeight;
+        ctx.drawImage(image, 0, 0, wWid, wHeight);
+        ctx.fillStyle = 'black';
+        ctx.font = '8px Arial';
+        ctx.fillText(` version: 1129.10.1; env: STAGE`, 0, 10);
+      });
+    };
+    updateCanvas();
+  }, [img]);
 
   function capture() {
     captureScreen({
       format: 'jpg',
       quality: 0.8,
+      // width: 50,
+      // height: 50,
     }).then(
       uri => {
         setImage(uri);
@@ -90,39 +111,67 @@ function App(): React.JSX.Element {
     );
   }
 
-  console.log(img);
+  const captureCanvas = async () => {
+    if (viewShotRef.current) {
+      try {
+        const uri = await viewShotRef.current.capture();
+        setCanvasImage(uri);
+      } catch (error) {
+        console.error('Error capturing canvas:', error);
+      }
+    }
+  };
+
+  console.log('capturedImage', img);
   return (
-    <SafeAreaView style={backgroundStyle}>
-      <StatusBar
-        barStyle={isDarkMode ? 'light-content' : 'dark-content'}
-        backgroundColor={backgroundStyle.backgroundColor}
-      />
-      {<Canvas ref={canvasRef} style={{ width: 0, height: 0 }} />}
-      <ScrollView
-        contentInsetAdjustmentBehavior="automatic"
-        style={backgroundStyle}>
-        <Header />
+    <ViewShot ref={viewShotRef} options={{ format: 'jpg', quality: 0.9 }}>
+      <SafeAreaView style={{ backgroundColor: 'transparent' }}>
         <View
           style={{
-            backgroundColor: isDarkMode ? Colors.black : Colors.white,
+            position: 'absolute',
+            backgroundColor: 'orange',
+            top: -50,
+            left: -50,
           }}>
-          <Section title="Step One">
-            Edit <Text style={styles.highlight}>App.tsx</Text> to change this
-            screen and then come back to see your edits.
-          </Section>
-          <Section title="See Your Changes">
-            <ReloadInstructions />
-          </Section>
-          <Section title="Debug">
-            <DebugInstructions />
-          </Section>
-          <Section title="Learn More">
-            Read the docs to discover what to do next:
-          </Section>
+          {/* <Text>version: 1123.124</Text>
+          <Text>env: stage</Text> */}
         </View>
-        <Button title={'Capture'} onPress={capture} />
-      </ScrollView>
-    </SafeAreaView>
+        <Button title={'CaptureToUpdateCanvas'} onPress={capture} />
+        <Button title={'CaptureRootView'} onPress={captureCanvas} />
+        <ScrollView contentInsetAdjustmentBehavior="automatic">
+          <Header />
+          <Text>Inserted env and ver for</Text>
+          <Canvas ref={canvasRef} style={{ width: 0, height: 0 }} />
+          <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} />
+          {/* <RnImage
+            source={{ uri: img, width: wWid / 2, height: wHeight / 2 }}
+            style={{
+              borderColor: 'red',
+              borderWidth: 2,
+              backgroundColor: 'red',
+            }}
+          /> */}
+          <View
+            style={{
+              backgroundColor: isDarkMode ? Colors.black : Colors.white,
+            }}>
+            <Section title="Step One">
+              Edit <Text style={styles.highlight}>App.tsx</Text> to change this
+              screen and then come back to see your edits.
+            </Section>
+            <Section title="See Your Changes">
+              <ReloadInstructions />
+            </Section>
+            <Section title="Debug">
+              <DebugInstructions />
+            </Section>
+            <Section title="Learn More">
+              Read the docs to discover what to do next:
+            </Section>
+          </View>
+        </ScrollView>
+      </SafeAreaView>
+    </ViewShot>
   );
 }
 
