@@ -5,9 +5,10 @@
  * @format
  */
 
-import React from 'react';
-import type {PropsWithChildren} from 'react';
+import React, { useState, useRef } from 'react';
+import type { PropsWithChildren } from 'react';
 import {
+  Button,
   SafeAreaView,
   ScrollView,
   StatusBar,
@@ -21,15 +22,17 @@ import {
   Colors,
   DebugInstructions,
   Header,
-  LearnMoreLinks,
   ReloadInstructions,
 } from 'react-native/Libraries/NewAppScreen';
+
+import { captureScreen } from 'react-native-view-shot';
+import Canvas from 'react-native-canvas';
 
 type SectionProps = PropsWithChildren<{
   title: string;
 }>;
 
-function Section({children, title}: SectionProps): React.JSX.Element {
+function Section({ children, title }: SectionProps): React.JSX.Element {
   const isDarkMode = useColorScheme() === 'dark';
   return (
     <View style={styles.sectionContainer}>
@@ -55,19 +58,46 @@ function Section({children, title}: SectionProps): React.JSX.Element {
   );
 }
 
+function capture() {
+  captureScreen({
+    format: 'jpg',
+    quality: 0.8,
+  }).then(
+    uri => console.log('Image saved to', uri),
+    error => console.error('Oops, snapshot failed', error),
+  );
+}
+
 function App(): React.JSX.Element {
   const isDarkMode = useColorScheme() === 'dark';
+
+  const canvasRef = useRef(null);
+  const [img, setImage] = useState<string | null>(null);
 
   const backgroundStyle = {
     backgroundColor: isDarkMode ? Colors.darker : Colors.lighter,
   };
 
+  function capture() {
+    captureScreen({
+      format: 'jpg',
+      quality: 0.8,
+    }).then(
+      uri => {
+        setImage(uri);
+      },
+      error => console.error('Oops, snapshot failed', error),
+    );
+  }
+
+  console.log(img);
   return (
     <SafeAreaView style={backgroundStyle}>
       <StatusBar
         barStyle={isDarkMode ? 'light-content' : 'dark-content'}
         backgroundColor={backgroundStyle.backgroundColor}
       />
+      {<Canvas ref={canvasRef} style={{ width: 0, height: 0 }} />}
       <ScrollView
         contentInsetAdjustmentBehavior="automatic"
         style={backgroundStyle}>
@@ -89,8 +119,8 @@ function App(): React.JSX.Element {
           <Section title="Learn More">
             Read the docs to discover what to do next:
           </Section>
-          <LearnMoreLinks />
         </View>
+        <Button title={'Capture'} onPress={capture} />
       </ScrollView>
     </SafeAreaView>
   );
