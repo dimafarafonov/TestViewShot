@@ -122,56 +122,59 @@ function App(): React.JSX.Element {
     }
   };
 
-  console.log('capturedImage', img);
+  console.log('capturedImage', canvasImage);
   return (
-    <ViewShot ref={viewShotRef} options={{ format: 'jpg', quality: 0.9 }}>
-      <SafeAreaView style={{ backgroundColor: 'transparent' }}>
+    <SafeAreaView style={{ backgroundColor: 'transparent' }}>
+      <View
+        style={{
+          position: 'absolute',
+          backgroundColor: 'orange',
+          top: -50,
+          left: -50,
+        }}>
+        {/* <Text>version: 1123.124</Text>
+          <Text>env: stage</Text> */}
+      </View>
+      <Button title={'CaptureToUpdateCanvas'} onPress={capture} />
+      <Button title={'CaptureRootView'} onPress={captureCanvas} />
+      <ScrollView contentInsetAdjustmentBehavior="automatic">
+        <Header />
+        <Text>Inserted env and ver for</Text>
+        <ViewShot
+          ref={viewShotRef}
+          options={{ format: 'jpg', quality: 0.9 }}
+          style={{ position: 'absolute', left: -9999, top: -9999 }}>
+          <Canvas ref={canvasRef} style={{ width: wWid, height: wHeight }} />
+        </ViewShot>
+        <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} />
+        <RnImage
+          source={{ uri: canvasImage, width: wWid, height: wHeight }}
+          style={{
+            borderColor: 'red',
+            borderWidth: 2,
+            backgroundColor: 'red',
+          }}
+        />
         <View
           style={{
-            position: 'absolute',
-            backgroundColor: 'orange',
-            top: -50,
-            left: -50,
+            backgroundColor: isDarkMode ? Colors.black : Colors.white,
           }}>
-          {/* <Text>version: 1123.124</Text>
-          <Text>env: stage</Text> */}
+          <Section title="Step One">
+            Edit <Text style={styles.highlight}>App.tsx</Text> to change this
+            screen and then come back to see your edits.
+          </Section>
+          <Section title="See Your Changes">
+            <ReloadInstructions />
+          </Section>
+          <Section title="Debug">
+            <DebugInstructions />
+          </Section>
+          <Section title="Learn More">
+            Read the docs to discover what to do next:
+          </Section>
         </View>
-        <Button title={'CaptureToUpdateCanvas'} onPress={capture} />
-        <Button title={'CaptureRootView'} onPress={captureCanvas} />
-        <ScrollView contentInsetAdjustmentBehavior="automatic">
-          <Header />
-          <Text>Inserted env and ver for</Text>
-          <Canvas ref={canvasRef} style={{ width: 0, height: 0 }} />
-          <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} />
-          {/* <RnImage
-            source={{ uri: img, width: wWid / 2, height: wHeight / 2 }}
-            style={{
-              borderColor: 'red',
-              borderWidth: 2,
-              backgroundColor: 'red',
-            }}
-          /> */}
-          <View
-            style={{
-              backgroundColor: isDarkMode ? Colors.black : Colors.white,
-            }}>
-            <Section title="Step One">
-              Edit <Text style={styles.highlight}>App.tsx</Text> to change this
-              screen and then come back to see your edits.
-            </Section>
-            <Section title="See Your Changes">
-              <ReloadInstructions />
-            </Section>
-            <Section title="Debug">
-              <DebugInstructions />
-            </Section>
-            <Section title="Learn More">
-              Read the docs to discover what to do next:
-            </Section>
-          </View>
-        </ScrollView>
-      </SafeAreaView>
-    </ViewShot>
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
