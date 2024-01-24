@@ -5,99 +5,104 @@
  * @format
  */
 
-import React, { useState, useRef, useEffect } from 'react';
+import { useState, useRef } from 'react';
+import React from 'react';
 import type { PropsWithChildren } from 'react';
 import {
   Button,
   SafeAreaView,
-  ScrollView,
-  StatusBar,
   StyleSheet,
   Text,
-  useColorScheme,
-  View,
   Dimensions,
+  PermissionsAndroid,
+  Platform,
   Image as RnImage,
+  View,
 } from 'react-native';
 
-import {
-  Colors,
-  DebugInstructions,
-  Header,
-  ReloadInstructions,
-} from 'react-native/Libraries/NewAppScreen';
+import { CameraRoll } from '@react-native-camera-roll/camera-roll';
 
 import ViewShot, { captureScreen } from 'react-native-view-shot';
-import Canvas, { Image } from 'react-native-canvas';
+import Shake from 'react-native-shake';
 
 type SectionProps = PropsWithChildren<{
   title: string;
 }>;
 
-function Section({ children, title }: SectionProps): React.JSX.Element {
-  const isDarkMode = useColorScheme() === 'dark';
-  return (
-    <View style={styles.sectionContainer}>
-      <Text
-        style={[
-          styles.sectionTitle,
-          {
-            color: isDarkMode ? Colors.white : Colors.black,
-          },
-        ]}>
-        {title}
-      </Text>
-      <Text
-        style={[
-          styles.sectionDescription,
-          {
-            color: isDarkMode ? Colors.light : Colors.dark,
-          },
-        ]}>
-        {children}
-      </Text>
-    </View>
-  );
-}
-
-const wWid = Dimensions.get('screen').width / 2;
-const wHeight = Dimensions.get('screen').height / 2;
+const wWid = Dimensions.get('screen').width;
+const wHeight = Dimensions.get('screen').height;
 
 function App(): React.JSX.Element {
-  const isDarkMode = useColorScheme() === 'dark';
-
-  const canvasRef = useRef(null);
   const viewShotRef = useRef(null);
-  const [img, setImage] = useState<string | null>(null);
-  const [canvasImage, setCanvasImage] = useState<string | null>(null);
+  const [img, setImage] = useState<string | undefined>(undefined);
+  const [canvasImage, setCanvasImage] = useState<string | undefined>(undefined);
 
-  useEffect(() => {
-    const updateCanvas = () => {
-      if (canvasRef?.current === null) {
-        return;
+  async function hasAndroidPermission() {
+    const getCheckPermissionPromise = () => {
+      // @ts-ignore
+      if (Platform.Version >= 33) {
+        return Promise.all([
+          PermissionsAndroid.check(
+            PermissionsAndroid.PERMISSIONS.READ_MEDIA_IMAGES,
+          ),
+          PermissionsAndroid.check(
+            PermissionsAndroid.PERMISSIONS.READ_MEDIA_VIDEO,
+          ),
+        ]).then(
+          ([hasReadMediaImagesPermission, hasReadMediaVideoPermission]) =>
+            hasReadMediaImagesPermission && hasReadMediaVideoPermission,
+        );
+      } else {
+        return PermissionsAndroid.check(
+          PermissionsAndroid.PERMISSIONS.READ_EXTERNAL_STORAGE,
+        );
       }
-      console.log('123');
-      const ctx = canvasRef.current?.getContext('2d');
-
-      // // Load your image
-      const image = new Image(canvasRef.current, wHeight, wWid);
-      image.src = img as string;
-      // image.src =
-      //   'https://upload.wikimedia.org/wikipedia/commons/6/63/Biho_Takashi._Bat_Before_the_Moon%2C_ca._1910.jpg' as string;
-
-      image.addEventListener('load', () => {
-        canvasRef.current.width = wWid;
-        canvasRef.current.height = wHeight;
-        ctx.drawImage(image, 0, 0, wWid, wHeight);
-        ctx.fillStyle = 'black';
-        ctx.font = '8px Arial';
-        ctx.fillText(` version: 1129.10.1; env: STAGE`, 0, 10);
-      });
     };
-    updateCanvas();
-  }, [img]);
 
-  function capture() {
+    const hasPermission = await getCheckPermissionPromise();
+    if (hasPermission) {
+      return true;
+    }
+    const getRequestPermissionPromise = () => {
+      // @ts-ignore
+      if (Platform.Version >= 33) {
+        return PermissionsAndroid.requestMultiple([
+          PermissionsAndroid.PERMISSIONS.READ_MEDIA_IMAGES,
+          PermissionsAndroid.PERMISSIONS.READ_MEDIA_VIDEO,
+        ]).then(
+          statuses =>
+            statuses[PermissionsAndroid.PERMISSIONS.READ_MEDIA_IMAGES] ===
+              PermissionsAndroid.RESULTS.GRANTED &&
+            statuses[PermissionsAndroid.PERMISSIONS.READ_MEDIA_VIDEO] ===
+              PermissionsAndroid.RESULTS.GRANTED,
+        );
+      } else {
+        return PermissionsAndroid.request(
+          PermissionsAndroid.PERMISSIONS.READ_EXTERNAL_STORAGE,
+        ).then(status => status === PermissionsAndroid.RESULTS.GRANTED);
+      }
+    };
+
+    return await getRequestPermissionPromise();
+  }
+
+  React.useEffect(() => {
+    const subscription = Shake.addListener(async () => {
+      await capture();
+      setTimeout(async () => {
+        await captureCanvas();
+      }, 1000);
+
+      // Your code here...
+    });
+
+    return () => {
+      // Your code here...
+      subscription.remove();
+    };
+  }, []);
+
+  async function capture() {
     captureScreen({
       format: 'jpg',
       quality: 0.8,
@@ -115,66 +120,40 @@ function App(): React.JSX.Element {
     if (viewShotRef.current) {
       try {
         const uri = await viewShotRef.current.capture();
-        setCanvasImage(uri);
+
+        await savePicture(uri);
+
+        // setCanvasImage(uri);
       } catch (error) {
         console.error('Error capturing canvas:', error);
       }
     }
   };
 
-  console.log('capturedImage', canvasImage);
+  async function savePicture(tag: string) {
+    if (Platform.OS === 'android' && !(await hasAndroidPermission())) {
+      return;
+    }
+
+    CameraRoll.save(tag).then(() => {
+      console.log('shaked');
+      console.log('saved');
+    });
+  }
+
   return (
-    <SafeAreaView style={{ backgroundColor: 'transparent' }}>
-      <View
-        style={{
-          position: 'absolute',
-          backgroundColor: 'orange',
-          top: -50,
-          left: -50,
-        }}>
-        {/* <Text>version: 1123.124</Text>
-          <Text>env: stage</Text> */}
-      </View>
+    <View style={{ backgroundColor: 'orange', flex: 1 }}>
       <Button title={'CaptureToUpdateCanvas'} onPress={capture} />
       <Button title={'CaptureRootView'} onPress={captureCanvas} />
-      <ScrollView contentInsetAdjustmentBehavior="automatic">
-        <Header />
-        <Text>Inserted env and ver for</Text>
-        <ViewShot
-          ref={viewShotRef}
-          options={{ format: 'jpg', quality: 0.9 }}
-          style={{ position: 'absolute', left: -9999, top: -9999 }}>
-          <Canvas ref={canvasRef} style={{ width: wWid, height: wHeight }} />
+      <SafeAreaView style={{ position: 'absolute', left: -9999, top: -9999 }}>
+        <ViewShot ref={viewShotRef} options={{ format: 'jpg', quality: 0.9 }}>
+          <RnImage source={{ uri: img, width: wWid, height: wHeight - 40 }} />
+          <Text style={{ height: 40, position: 'absolute', top: 20, left: 10 }}>
+            stage and 1.2.41.4
+          </Text>
         </ViewShot>
-        <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} />
-        <RnImage
-          source={{ uri: canvasImage, width: wWid, height: wHeight }}
-          style={{
-            borderColor: 'red',
-            borderWidth: 2,
-            backgroundColor: 'red',
-          }}
-        />
-        <View
-          style={{
-            backgroundColor: isDarkMode ? Colors.black : Colors.white,
-          }}>
-          <Section title="Step One">
-            Edit <Text style={styles.highlight}>App.tsx</Text> to change this
-            screen and then come back to see your edits.
-          </Section>
-          <Section title="See Your Changes">
-            <ReloadInstructions />
-          </Section>
-          <Section title="Debug">
-            <DebugInstructions />
-          </Section>
-          <Section title="Learn More">
-            Read the docs to discover what to do next:
-          </Section>
-        </View>
-      </ScrollView>
-    </SafeAreaView>
+      </SafeAreaView>
+    </View>
   );
 }
 
